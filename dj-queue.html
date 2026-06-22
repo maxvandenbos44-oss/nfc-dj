@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DJ Request</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #111113;
+    --surface:   #1a1a1e;
+    --border:    #2a2a30;
+    --muted:     #3a3a42;
+    --text:      #f0f0f2;
+    --sub:       #888890;
+    --accent:    #e0e0e8;
+    --dot:       #5a5a6a;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Mode switcher ──────────────────────────── */
+  .mode-switch {
+    position: fixed;
+    top: 14px;
+    right: 18px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+  }
+
+  .mode-btn {
+    background: none;
+    border: none;
+    color: var(--sub);
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-transform: uppercase;
+  }
+  .mode-btn.active {
+    background: var(--muted);
+    color: var(--text);
+  }
+  .mode-btn:hover:not(.active) { color: var(--accent); }
+
+  /* ── Views ──────────────────────────────────── */
+  .view { display: none; min-height: 100vh; }
+  .view.active { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px 40px; }
+
+  /* ── GUEST VIEW ─────────────────────────────── */
+  .guest-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .guest-header h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(28px, 6vw, 48px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    line-height: 1.1;
+  }
+  .guest-header p {
+    margin-top: 8px;
+    color: var(--sub);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+  }
+
+  /* Counter badge */
+  .counter-wrap {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .counter-num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--sub);
+    line-height: 1;
+  }
+  .counter-label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dot);
+    margin-top: 3px;
+  }
+
+  /* Input card */
+  .request-card {
+    width: 100%;
+    max-width: 460px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 32px;
+  }
+  .request-card label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sub);
+    margin-bottom: 10px;
+  }
+  .input-row {
+    display: flex;
+    gap: 10px;
+  }
+  .request-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .request-input::placeholder { color: var(--dot); }
+  .request-input:focus { border-color: var(--muted); }
+
+  .submit-btn {
+    background: var(--text);
+    border: none;
+    border-radius: 10px;
+    color: var(--bg);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 12px 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  .submit-btn:hover { opacity: 0.85; }
+  .submit-btn:active { opacity: 0.7; }
+
+  .toast {
+    font-size: 12px;
+    color: var(--sub);
+    margin-top: 12px;
+    min-height: 16px;
+    text-align: center;
+    transition: opacity 0.3s;
+  }
+  .toast.show { color: #7aba8a; }
+
+  /* Queue list */
+  .queue-wrap {
+    width: 100%;
+    max-width: 460px;
+  }
+  .queue-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .queue-title {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sub);
+  }
+  .queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .queue-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    animation: slideIn 0.25s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .queue-pos {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--dot);
+    min-width: 20px;
+    text-align: right;
+  }
+  .queue-song {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .queue-empty {
+    text-align: center;
+    padding: 24px 0;
+    color: var(--dot);
+    font-size: 13px;
+  }
+
+  /* ── DJ DASHBOARD ───────────────────────────── */
+  #dj-view {
+    justify-content: flex-start;
+    padding-top: 80px;
+    padding-bottom: 40px;
+  }
+  .dj-top {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .dj-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .dj-count {
+    font-size: 12px;
+    color: var(--sub);
+    letter-spacing: 0.06em;
+  }
+  .dj-list {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .dj-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    animation: slideIn 0.25s ease;
+  }
+  .dj-num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dot);
+    min-width: 24px;
+  }
+  .dj-song {
+    font-size: 15px;
+    flex: 1;
+    color: var(--text);
+  }
+  .dj-remove {
+    background: none;
+    border: none;
+    color: var(--dot);
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .dj-remove:hover { color: #c07070; background: rgba(192,112,112,0.1); }
+
+  .dj-empty {
+    text-align: center;
+    padding: 48px 0;
+    color: var(--dot);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+  }
+
+  .clear-btn {
+    margin-top: 24px;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--sub);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 8px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .clear-btn:hover { border-color: #c07070; color: #c07070; }
+</style>
+</head>
+<body>
+
+<!-- Mode switcher -->
+<nav class="mode-switch">
+  <button class="mode-btn active" id="btn-guest" onclick="setView('guest')">Gast</button>
+  <button class="mode-btn"        id="btn-dj"    onclick="setView('dj')">DJ</button>
+</nav>
+
+<!-- ── GUEST VIEW ──────────────────────────────── -->
+<div class="view active" id="guest-view">
+
+  <div class="guest-header">
+    <h1>Aanvraag doen</h1>
+    <p>Welk nummer wil je graag horen?</p>
+  </div>
+
+  <div class="request-card">
+    <label for="song-input">Nummer of artiest</label>
+    <div class="input-row">
+      <input
+        class="request-input"
+        id="song-input"
+        type="text"
+        placeholder="bv. Tame Impala – Let It Happen"
+        maxlength="80"
+        autocomplete="off"
+        onkeydown="if(event.key==='Enter') submitRequest()"
+      />
+      <button class="submit-btn" onclick="submitRequest()">Voeg toe</button>
+    </div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div class="queue-wrap">
+    <div class="queue-header">
+      <span class="queue-title">Wachtlijst</span>
+    </div>
+    <div class="queue-list" id="guest-queue"></div>
+  </div>
+
+  <!-- Counter -->
+  <div class="counter-wrap">
+    <span class="counter-num" id="counter">0</span>
+    <span class="counter-label">aanvragen</span>
+  </div>
+
+</div>
+
+<!-- ── DJ DASHBOARD ────────────────────────────── -->
+<div class="view" id="dj-view">
+
+  <div class="dj-top">
+    <span class="dj-title">Aanvragen</span>
+    <span class="dj-count" id="dj-count">0 nummers</span>
+  </div>
+
+  <div class="dj-list" id="dj-queue"></div>
+
+  <button class="clear-btn" onclick="clearAll()">Alles wissen</button>
+
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────
+  let queue = JSON.parse(localStorage.getItem('dj-queue') || '[]');
+
+  function save() {
+    localStorage.setItem('dj-queue', JSON.stringify(queue));
+  }
+
+  // ── View switch ────────────────────────────────
+  function setView(v) {
+    document.getElementById('guest-view').classList.toggle('active', v === 'guest');
+    document.getElementById('dj-view').classList.toggle('active', v === 'dj');
+    document.getElementById('btn-guest').classList.toggle('active', v === 'guest');
+    document.getElementById('btn-dj').classList.toggle('active', v === 'dj');
+    if (v === 'dj') renderDJ();
+    if (v === 'guest') renderGuest();
+  }
+
+  // ── Submit ─────────────────────────────────────
+  function submitRequest() {
+    const input = document.getElementById('song-input');
+    const val = input.value.trim();
+    if (!val) return;
+
+    queue.push(val);
+    save();
+    renderGuest();
+
+    input.value = '';
+    input.focus();
+
+    const toast = document.getElementById('toast');
+    toast.textContent = '✓ Aanvraag toegevoegd!';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  // ── Render guest ───────────────────────────────
+  function renderGuest() {
+    const list = document.getElementById('guest-queue');
+    const counter = document.getElementById('counter');
+    counter.textContent = queue.length;
+
+    if (queue.length === 0) {
+      list.innerHTML = '<div class="queue-empty">Nog geen aanvragen — wees de eerste!</div>';
+      return;
+    }
+
+    list.innerHTML = queue.map((song, i) => `
+      <div class="queue-item">
+        <span class="queue-pos">${i + 1}</span>
+        <span class="queue-song">${esc(song)}</span>
+      </div>
+    `).join('');
+  }
+
+  // ── Render DJ ──────────────────────────────────
+  function renderDJ() {
+    const list = document.getElementById('dj-queue');
+    const count = document.getElementById('dj-count');
+    count.textContent = queue.length === 1 ? '1 nummer' : `${queue.length} nummers`;
+
+    if (queue.length === 0) {
+      list.innerHTML = '<div class="dj-empty">Geen aanvragen op dit moment</div>';
+      return;
+    }
+
+    list.innerHTML = queue.map((song, i) => `
+      <div class="dj-item" id="item-${i}">
+        <span class="dj-num">${i + 1}</span>
+        <span class="dj-song">${esc(song)}</span>
+        <button class="dj-remove" title="Verwijder" onclick="remove(${i})">×</button>
+      </div>
+    `).join('');
+  }
+
+  // ── Remove ─────────────────────────────────────
+  function remove(i) {
+    queue.splice(i, 1);
+    save();
+    renderDJ();
+  }
+
+  // ── Clear all ──────────────────────────────────
+  function clearAll() {
+    if (!queue.length) return;
+    if (!confirm('Weet je zeker dat je de hele lijst wilt wissen?')) return;
+    queue = [];
+    save();
+    renderDJ();
+  }
+
+  // ── Escape HTML ────────────────────────────────
+  function esc(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Poll voor live sync (als meerdere tabs open zijn) ──
+  setInterval(() => {
+    const fresh = JSON.parse(localStorage.getItem('dj-queue') || '[]');
+    if (JSON.stringify(fresh) !== JSON.stringify(queue)) {
+      queue = fresh;
+      const active = document.getElementById('guest-view').classList.contains('active');
+      if (active) renderGuest(); else renderDJ();
+    }
+  }, 1500);
+
+  // ── Init ───────────────────────────────────────
+  renderGuest();
+</script>
+</body>
+</html>
